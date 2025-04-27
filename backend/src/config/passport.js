@@ -1,7 +1,10 @@
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const TwitterStrategy = require('passport-twitter').Strategy;
 const mongoose = require('mongoose');
 const User = require('../models/Users');
 const passport = require('passport');
+require('dotenv').config();
+
 
 passport.serializeUser((user, done) => {
   done(null, user.id);
@@ -34,3 +37,32 @@ passport.use(new GoogleStrategy({
     return done(err, null);
   }
 }));
+
+passport.use(new TwitterStrategy({
+  consumerKey: process.env.TWITTER_CONSUMER_KEY,
+  consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
+  callbackURL: process.env.TWITTER_CALLBACK_URL,
+  includeEmail: true,
+},
+async (token, tokenSecret, profile, done) => {
+  try {
+    const user = await User.findOne({ 'socialAccounts.twitter': profile.id });
+
+    if (user) {
+      return done(null, user);
+    } else {
+      const newUser = new User({
+        name: profile.displayName,
+        email: profile.emails && profile.emails[0] ? profile.emails[0].value : 'sem', // Twitter nem sempre envia email!
+        socialAccounts: {
+          twitter: profile.id
+        }
+      });
+      await newUser.save();
+      return done(null, newUser);
+    }
+  } catch (err) {
+    return done(err, null);
+  }
+}
+));

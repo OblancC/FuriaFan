@@ -9,6 +9,25 @@ const UserSchema = new mongoose.Schema({
     discord: { type: String },
     twitter: { type: String },
   },
+  cpf: { type: String }, 
+  address: { type: String }, 
+  birthDate: { type: Date }, 
+  interests: [{ type: String }], 
+  eventsAttended: [
+    {
+      event: { type: String },
+      date: { type: Date }
+    }
+  ], 
+  purchases: [
+    {
+      item: { type: String },
+      date: { type: Date },
+      value: { type: Number }
+    }
+  ],
+  documents: [{ type: String }], 
+  aiValidated: { type: Boolean, default: false }, 
   interactions: [
     {
       type: { type: String },

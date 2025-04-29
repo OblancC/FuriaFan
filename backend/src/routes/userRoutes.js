@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const fs = require('fs');
 const User = require('../models/Users');
+const { extractTextFromImage } = require('./visionService');
+
+const upload = multer({ dest: 'uploads/' });
 
 // Criar novo usuário (mock/teste)
 router.post('/register', async (req, res) => {
@@ -103,7 +108,59 @@ router.post('/:id/interactions', async (req, res) => {
   }
 });
 
+router.put('/:id/profile', async (req, res) => {
+  try {
+    const { cpf, address, birthDate, interests, eventsAttended, purchases } = req.body;
 
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          cpf,
+          address,
+          birthDate,
+          interests,
+          eventsAttended,
+          purchases
+        }
+      },
+      { new: true }
+    );
 
+    res.status(200).json({ message: 'Perfil atualizado com sucesso', updatedUser });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/:id/upload-document', upload.single('document'), async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'Usuário não encontrado' });
+
+    const text = await extractTextFromImage(req.file.path);
+
+    // Regex para encontrar CPF
+    const cpfEncontrado = text.match(/\d{3}\.\d{3}\.\d{3}\-\d{2}/);
+
+    if (cpfEncontrado) {
+      // Atualiza o usuário
+      user.documents.push(req.file.filename);
+      user.cpf = cpfEncontrado[0];
+      user.aiValidated = true;
+
+      await user.save();
+
+      fs.unlinkSync(req.file.path); // Remove o arquivo temporário
+
+      res.status(200).json({ message: 'Documento validado com sucesso!', cpf: cpfEncontrado[0], user });
+    } else {
+      fs.unlinkSync(req.file.path); // Remove o arquivo mesmo em caso de erro
+      res.status(400).json({ message: 'Não conseguimos validar o CPF no documento.' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;

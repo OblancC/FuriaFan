@@ -53,7 +53,7 @@ async (token, tokenSecret, profile, done) => {
     } else {
       const newUser = new User({
         name: profile.displayName,
-        email: profile.emails && profile.emails[0] ? profile.emails[0].value : 'sem', // Twitter nem sempre envia email!
+        email: profile.emails && profile.emails[0] ? profile.emails[0].value : ' ', // Twitter nem sempre envia email!
         socialAccounts: {
           twitter: profile.id
         }

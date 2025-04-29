@@ -1,28 +1,44 @@
 const express = require('express');
 const router = express.Router();
-const passport = require('passport');
+const passport = require('../config/passport');
 
-// Rota de login com Discord
+// Rota para iniciar autenticação do Discord
 router.get('/discord', passport.authenticate('discord'));
 
+// Callback do Discord
 router.get('/discord/callback',
-  passport.authenticate('discord', {
-    failureRedirect: '/login'
-  }),
-  (req, res) => {
-    res.redirect(process.env.FRONTEND_URL || 'http://localhost:3000');
-  }
+    passport.authenticate('discord', {
+        failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`
+    }),
+    (req, res) => {
+        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile`);
+    }
 );
+
+// Rota para obter informações do usuário atual
+router.get('/user', (req, res) => {
+    if (req.isAuthenticated()) {
+        res.json(req.user);
+    } else {
+        res.status(401).json({ message: 'Não autenticado' });
+    }
+});
+
+// Rota para logout
+router.get('/logout', (req, res) => {
+    req.logout();
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`);
+});
 
 // Rota de login com Twitter
 router.get('/twitter', passport.authenticate('twitter'));
 
 router.get('/twitter/callback',
   passport.authenticate('twitter', {
-    failureRedirect: '/login'
+    failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`
   }),
   (req, res) => {
-    res.redirect(process.env.FRONTEND_URL || 'http://localhost:3000');
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile`);
   }
 );
 
@@ -33,18 +49,12 @@ router.get('/google',
 
 router.get('/google/callback',
   passport.authenticate('google', {
-    failureRedirect: '/login'
+    failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`
   }),
   (req, res) => {
-    res.redirect(process.env.FRONTEND_URL || 'http://localhost:3000');
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile`);
   }
 );
-
-// Rota de logout
-router.get('/logout', (req, res) => {
-  req.logout();
-  res.redirect(process.env.FRONTEND_URL || 'http://localhost:3000');
-});
 
 // Rota para verificar status da autenticação
 router.get('/status', (req, res) => {

@@ -3,6 +3,8 @@ const TwitterStrategy = require('passport-twitter').Strategy;
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const passport = require('passport');
+const DiscordStrategy = require('passport-discord').Strategy;
+const discordConfig = require('./discord');
 require('dotenv').config();
 
 
@@ -11,24 +13,39 @@ passport.serializeUser((user, done) => {
 });
 
 passport.deserializeUser(async (id, done) => {
-  const user = await User.findById(id);
-  done(null, user);
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (error) {
+    done(error, null);
+  }
 });
 
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: process.env.GOOGLE_CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
+  callbackURL: process.env.GOOGLE_CALLBACK_URL,
+  passReqToCallback: true
+}, async (req, accessToken, refreshToken, profile, done) => {
   try {
+    // Se já está logado, vincule a conta Google
+    if (req.user) {
+      const user = await User.findById(req.user._id);
+      user.socialMedia = user.socialMedia || {};
+      user.socialMedia.google = {
+        id: profile.id,
+        email: profile.emails[0].value
+      };
+      await user.save();
+      return done(null, user);
+    }
     // Procura usuário pelo id do Google
     let user = await User.findOne({ 'socialMedia.google.id': profile.id });
-
     // Se não encontrar, procura pelo email
     if (!user) {
       user = await User.findOne({ email: profile.emails[0].value });
       if (user) {
-        // Vincula o Google à conta existente
+        user.socialMedia = user.socialMedia || {};
         user.socialMedia.google = {
           id: profile.id,
           email: profile.emails[0].value
@@ -36,7 +53,6 @@ passport.use(new GoogleStrategy({
         await user.save();
       }
     }
-
     // Se ainda não existe, cria novo usuário
     if (!user) {
       user = await User.create({
@@ -50,7 +66,6 @@ passport.use(new GoogleStrategy({
         }
       });
     }
-
     return done(null, user);
   } catch (err) {
     return done(err, null);
@@ -62,17 +77,28 @@ passport.use(new TwitterStrategy({
   consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
   callbackURL: process.env.TWITTER_CALLBACK_URL,
   includeEmail: true,
+  passReqToCallback: true
 },
-async (token, tokenSecret, profile, done) => {
+async (req, token, tokenSecret, profile, done) => {
   try {
+    // Se já está logado, vincule a conta Twitter
+    if (req.user) {
+      const user = await User.findById(req.user._id);
+      user.socialMedia = user.socialMedia || {};
+      user.socialMedia.twitter = {
+        id: profile.id,
+        username: profile.username
+      };
+      await user.save();
+      return done(null, user);
+    }
     // Procura usuário pelo id do Twitter
     let user = await User.findOne({ 'socialMedia.twitter.id': profile.id });
-
     // Se não encontrar, procura pelo email (se disponível)
     if (!user && profile.emails && profile.emails[0]) {
       user = await User.findOne({ email: profile.emails[0].value });
       if (user) {
-        // Vincula o Twitter à conta existente
+        user.socialMedia = user.socialMedia || {};
         user.socialMedia.twitter = {
           id: profile.id,
           username: profile.username
@@ -80,7 +106,6 @@ async (token, tokenSecret, profile, done) => {
         await user.save();
       }
     }
-
     // Se ainda não existe, cria novo usuário
     if (!user) {
       user = await User.create({
@@ -94,9 +119,72 @@ async (token, tokenSecret, profile, done) => {
         }
       });
     }
-
     return done(null, user);
   } catch (err) {
     return done(err, null);
   }
 }));
+
+passport.use(new DiscordStrategy({
+  clientID: discordConfig.clientID,
+  clientSecret: discordConfig.clientSecret,
+  callbackURL: discordConfig.callbackURL,
+  scope: discordConfig.scope,
+  passReqToCallback: true
+}, async (req, accessToken, refreshToken, profile, done) => {
+  try {
+    // Se já está logado, vincule a conta Discord
+    if (req.user) {
+      const user = await User.findById(req.user._id);
+      user.socialMedia = user.socialMedia || {};
+      user.socialMedia.discord = {
+        id: profile.id,
+        username: profile.username,
+        email: profile.email,
+        avatar: profile.avatar,
+        accessToken,
+        refreshToken,
+        guilds: profile.guilds
+      };
+      await user.save();
+      return done(null, user);
+    }
+    // Procurar usuário existente
+    let user = await User.findOne({ 'socialMedia.discord.id': profile.id });
+    if (user) {
+      user.socialMedia = user.socialMedia || {};
+      user.socialMedia.discord = {
+        id: profile.id,
+        username: profile.username,
+        email: profile.email,
+        avatar: profile.avatar,
+        accessToken,
+        refreshToken,
+        guilds: profile.guilds
+      };
+    } else {
+      // Criar novo usuário
+      user = new User({
+        name: profile.username,
+        email: profile.email,
+        socialMedia: {
+          discord: {
+            id: profile.id,
+            username: profile.username,
+            email: profile.email,
+            avatar: profile.avatar,
+            accessToken,
+            refreshToken,
+            guilds: profile.guilds
+          }
+        }
+      });
+    }
+    await user.save();
+    return done(null, user);
+  } catch (error) {
+    return done(error, null);
+  }
+}));
+
+module.exports = passport;

@@ -10,6 +10,10 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  password: {
+    type: String,
+    required: false
+  },
   cpf: {
     type: String,
     unique: true,
@@ -24,7 +28,18 @@ const userSchema = new mongoose.Schema({
   socialMedia: {
     discord: {
       id: String,
-      username: String
+      username: String,
+      email: String,
+      avatar: String,
+      accessToken: String,
+      refreshToken: String,
+      guilds: [{
+        id: String,
+        name: String,
+        icon: String,
+        owner: Boolean,
+        permissions: Number
+      }]
     },
     twitter: {
       id: String,

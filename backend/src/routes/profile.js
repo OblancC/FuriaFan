@@ -6,12 +6,20 @@ const { extractTextFromImage } = require('../services/visionServices');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 
+// ID do servidor oficial da FURIA via .env
+const FURIA_GUILD_ID = process.env.FURIA_GUILD_ID;
+
 // Obter perfil do usuário
 router.get('/me', isAuthenticated, async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
       .select('-__v');
-    res.json(user);
+    // Verifica se está no servidor da FURIA
+    const isInFuriaGuild = user.socialMedia?.discord?.guilds?.some(guild => guild.id === FURIA_GUILD_ID);
+    res.json({
+      ...user.toObject(),
+      isInFuriaGuild: !!isInFuriaGuild
+    });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao buscar perfil' });
   }
@@ -99,6 +107,37 @@ router.post('/me/esports-profiles', isAuthenticated, async (req, res) => {
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: 'Erro ao adicionar perfil de e-sports' });
+  }
+});
+
+// Adicionar rotas para desvincular redes sociais
+router.post('/unlink/google', isAuthenticated, async (req, res) => {
+  try {
+    req.user.socialMedia.google = undefined;
+    await req.user.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao desvincular Google' });
+  }
+});
+
+router.post('/unlink/twitter', isAuthenticated, async (req, res) => {
+  try {
+    req.user.socialMedia.twitter = undefined;
+    await req.user.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao desvincular Twitter' });
+  }
+});
+
+router.post('/unlink/discord', isAuthenticated, async (req, res) => {
+  try {
+    req.user.socialMedia.discord = undefined;
+    await req.user.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao desvincular Discord' });
   }
 });
 

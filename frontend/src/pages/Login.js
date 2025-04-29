@@ -8,18 +8,20 @@ import {
   Button,
   Box,
   Alert,
-  Divider
+  Divider,
+  Grid
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
-import GoogleIcon from '@mui/icons-material/Google';
-import TwitterIcon from '@mui/icons-material/Twitter';
+import { Google as GoogleIcon, Twitter as TwitterIcon } from '@mui/icons-material';
+import DiscordIcon from '../components/DiscordIcon';
+import { API_URLS, API_CONFIG } from '../config/api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, loginWithSocial } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -35,12 +37,10 @@ const Login = () => {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(API_URLS.login, {
+        ...API_CONFIG,
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password })
       });
 
       if (!response.ok) {
@@ -53,10 +53,6 @@ const Login = () => {
     } catch (err) {
       setError(err.message);
     }
-  };
-
-  const handleSocialLogin = (provider) => {
-    window.location.href = `http://localhost:5000/api/auth/${provider}`;
   };
 
   return (
@@ -73,22 +69,50 @@ const Login = () => {
         )}
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
-          <Button
-            variant="outlined"
-            startIcon={<GoogleIcon />}
-            onClick={() => handleSocialLogin('google')}
-            fullWidth
-          >
-            Entrar com Google
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<TwitterIcon />}
-            onClick={() => handleSocialLogin('twitter')}
-            fullWidth
-          >
-            Entrar com Twitter
-          </Button>
+          <Grid container spacing={2} sx={{ mt: 2 }}>
+            <Grid item xs={12}>
+              <Button
+                variant="contained"
+                fullWidth
+                startIcon={<GoogleIcon />}
+                onClick={() => loginWithSocial('google')}
+                sx={{
+                  backgroundColor: '#DB4437',
+                  '&:hover': { backgroundColor: '#C23321' }
+                }}
+              >
+                Entrar com Google
+              </Button>
+            </Grid>
+            <Grid item xs={12}>
+              <Button
+                variant="contained"
+                fullWidth
+                startIcon={<TwitterIcon />}
+                onClick={() => loginWithSocial('twitter')}
+                sx={{
+                  backgroundColor: '#1DA1F2',
+                  '&:hover': { backgroundColor: '#0D95E8' }
+                }}
+              >
+                Entrar com Twitter
+              </Button>
+            </Grid>
+            <Grid item xs={12}>
+              <Button
+                variant="contained"
+                fullWidth
+                startIcon={<DiscordIcon />}
+                onClick={() => loginWithSocial('discord')}
+                sx={{
+                  backgroundColor: '#7289DA',
+                  '&:hover': { backgroundColor: '#677BC4' }
+                }}
+              >
+                Entrar com Discord
+              </Button>
+            </Grid>
+          </Grid>
         </Box>
 
         <Divider sx={{ my: 2 }}>ou</Divider>

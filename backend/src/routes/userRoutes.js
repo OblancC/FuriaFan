@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const fs = require('fs');
-const User = require('../models/Users');
+const userController = require('../controllers/userController');
+const User = require('../models/User');
 const { extractTextFromImage } = require('./visionService');
 
 const upload = multer({ dest: 'uploads/' });

@@ -24,14 +24,10 @@ router.get('/user', (req, res) => {
     }
 });
 
-// Rota para logout
-router.get('/logout', (req, res) => {
-    req.logout();
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`);
-});
-
-// Rota de login com Twitter
-router.get('/twitter', passport.authenticate('twitter'));
+// Rota de login com X
+router.get('/twitter', passport.authenticate('twitter', {
+  scope: ['read', 'users.read', 'tweet.read', 'list.read', 'follows.read', 'offline.access']
+}));
 
 router.get('/twitter/callback',
   passport.authenticate('twitter', {
@@ -59,6 +55,25 @@ router.get('/google/callback',
 // Rota para verificar status da autenticação
 router.get('/status', (req, res) => {
   res.json({ isAuthenticated: req.isAuthenticated(), user: req.user });
+});
+
+// Rota de logout
+router.post('/logout', (req, res, next) => {
+  if (req.logout) {
+    req.logout(function(err) {
+      if (err) { return next(err); }
+      if (req.session) {
+        req.session.destroy(() => {
+          res.clearCookie('connect.sid');
+          res.json({ message: 'Logout realizado com sucesso' });
+        });
+      } else {
+        res.json({ message: 'Logout realizado com sucesso' });
+      }
+    });
+  } else {
+    res.json({ message: 'Logout realizado com sucesso' });
+  }
 });
 
 module.exports = router; 

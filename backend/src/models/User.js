@@ -23,7 +23,8 @@ const userSchema = new mongoose.Schema({
     street: String,
     city: String,
     state: String,
-    zipCode: String
+    zipCode: String,
+    country: String
   },
   socialMedia: {
     discord: {
@@ -52,7 +53,14 @@ const userSchema = new mongoose.Schema({
   },
   interests: [{
     type: String,
-    enum: ['CS:GO', 'Valorant', 'League of Legends', 'Free Fire', 'Outros']
+    enum: [
+      // Times
+      'furia', 'mibr', 'liquid', 'faze', 'g2', 'vitality', 'kingsleague',
+      // Jogos
+      'csgo', 'valorant', 'lol', 'dota2', 'fifa',
+      // Categorias
+      'esports', 'campeonatos', 'transferencias', 'noticias'
+    ]
   }],
   eventsAttended: [{
     eventId: String,
@@ -97,6 +105,20 @@ const userSchema = new mongoose.Schema({
   badges: [{
     type: String
   }],
+  socialData: {
+    twitter: {
+      following: [mongoose.Schema.Types.Mixed],
+      tweets: [mongoose.Schema.Types.Mixed],
+      likes: [mongoose.Schema.Types.Mixed]
+    },
+    discord: {
+      guilds: [mongoose.Schema.Types.Mixed]
+    },
+    google: {
+      youtubeSubscriptions: [mongoose.Schema.Types.Mixed],
+      youtubePlaylists: [mongoose.Schema.Types.Mixed]
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -1,21 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, TextField, Button, Paper, Typography, Avatar, IconButton } from '@mui/material';
+import { Box, TextField, Button, Paper, Typography, Avatar } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import io from 'socket.io-client';
 import axios from 'axios';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
-import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied';
-import MoodBadIcon from '@mui/icons-material/MoodBad';
+import ReactMarkdown from 'react-markdown';
 
-const socket = io('http://localhost:3001');
+const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000');
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const { user } = useAuth();
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    setMessages([]);
+    setNewMessage('');
+    // Mensagem automática de comandos ao entrar no chat
+    setMessages([
+      {
+        sender: 'bot',
+        text: `Bem-vindo ao chat FURIA Fans!\n\nComandos disponíveis:\n- lineup ou matchup: mostra o time atual\n- próximo jogo: mostra o próximo confronto\n- resultado anterior ou últimos resultados: últimos jogos\n- live ou ao vivo: canais de transmissão\n- rede sociais ou organização: redes oficiais da FURIA\n\nDigite um comando para começar!`
+      }
+    ]);
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -24,7 +33,7 @@ const Chat = () => {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/api/chat/general/messages', {
+        const response = await axios.get(`${API_BASE}/api/chat/general/messages`, {
           withCredentials: true
         });
         setMessages(response.data);
@@ -62,92 +71,87 @@ const Chat = () => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
-    try {
-      await axios.post(
-        'http://localhost:3001/api/chat/general/messages',
-        { message: newMessage },
-        { withCredentials: true }
-      );
-      setNewMessage('');
-    } catch (error) {
-      console.error('Erro ao enviar mensagem:', error);
-    }
-  };
+    const userMsg = { sender: 'user', text: newMessage };
+    setMessages((prev) => [...prev, userMsg]);
+    setNewMessage('');
+    scrollToBottom();
 
-  const handleReaction = async (messageId, reactionType) => {
     try {
-      await axios.post(
-        `http://localhost:3001/api/chat/messages/${messageId}/reactions`,
-        { type: reactionType },
-        { withCredentials: true }
-      );
+      const response = await axios.post(`${API_BASE}/api/bot`, { message: userMsg.text });
+      
+      // Formatar a resposta para adicionar links "Saiba Mais" nos resultados
+      let formattedResponse = response.data.response;
+      if (formattedResponse.includes('Resultados anteriores:')) {
+        const results = formattedResponse.split('\n').map(line => {
+          if (line.includes('vs')) {
+            return `${line} [Saiba Mais]`;
+          }
+          return line;
+        });
+        formattedResponse = results.join('\n');
+      }
+
+      setMessages((prev) => [...prev, { sender: 'bot', text: formattedResponse }]);
+      scrollToBottom();
     } catch (error) {
-      console.error('Erro ao reagir à mensagem:', error);
+      setMessages((prev) => [...prev, { sender: 'bot', text: 'Erro ao obter resposta do bot.' }]);
     }
   };
 
   return (
     <Box sx={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
       <Paper sx={{ flex: 1, overflow: 'auto', p: 2, mb: 2 }}>
-        {messages.map((message) => (
+        {messages.map((msg, idx) => (
           <Box
-            key={message._id}
+            key={idx}
             sx={{
               display: 'flex',
               mb: 2,
               alignItems: 'flex-start',
-              flexDirection: message.user._id === user?._id ? 'row-reverse' : 'row'
+              flexDirection: msg.sender === 'user' ? 'row-reverse' : 'row'
             }}
           >
-            <Avatar
-              sx={{
-                bgcolor: message.user._id === user?._id ? 'primary.main' : 'secondary.main',
-                mr: message.user._id === user?._id ? 0 : 1,
-                ml: message.user._id === user?._id ? 1 : 0
-              }}
+            <Avatar 
+              sx={{ bgcolor: msg.sender === 'user' ? 'primary.main' : 'secondary.main', mr: msg.sender === 'user' ? 0 : 1, ml: msg.sender === 'user' ? 1 : 0 }}
+              src={msg.sender === 'bot' ? process.env.PUBLIC_URL + '/assets/furia-logo.png' : undefined}
             >
-              {message.user.name[0]}
+              {msg.sender === 'user' ? (user?.name ? user.name[0] : 'U') : (msg.sender === 'bot' ? '' : 'B')}
             </Avatar>
             <Box>
               <Typography variant="subtitle2" color="text.secondary">
-                {message.user.name}
+                {msg.sender === 'user' ? (user?.name || 'Você') : 'FURIA Bot'}
               </Typography>
               <Paper
                 elevation={1}
-                sx={{
-                  p: 1,
-                  bgcolor: message.user._id === user?._id ? 'primary.light' : 'background.paper'
-                }}
+                sx={{ p: 1, bgcolor: msg.sender === 'user' ? 'primary.light' : 'background.paper' }}
               >
-                <Typography>{message.message}</Typography>
+                <Typography style={{ whiteSpace: 'pre-line', color: msg.sender === 'user' ? '#111' : undefined }}>
+                  {msg.sender === 'bot' ? (
+                    <ReactMarkdown components={{
+                      a: ({ node, ...props }) => <a {...props} style={{ color: '#fff', textDecoration: 'underline' }} />,
+                      p: ({ node, children, ...props }) => {
+                        const text = children[0];
+                        if (typeof text === 'string' && text.includes('|')) {
+                          const [content, link] = text.split('|');
+                          return (
+                            <p {...props}>
+                              {content}
+                              <a href={link.trim()} style={{ color: '#fff', textDecoration: 'underline' }}>
+                                Saiba Mais
+                              </a>
+                            </p>
+                          );
+                        }
+                        return <p {...props}>{children}</p>;
+                      }
+                    }}>
+                      {msg.text}
+                    </ReactMarkdown>
+                  ) : (
+                    msg.text
+                  )}
+                </Typography>
               </Paper>
-              <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
-                {message.reactions?.map((reaction, index) => (
-                  <Typography key={index} variant="caption">
-                    {reaction.type === 'like' && '👍'}
-                    {reaction.type === 'love' && '❤️'}
-                    {reaction.type === 'haha' && '😂'}
-                    {reaction.type === 'wow' && '😮'}
-                    {reaction.type === 'sad' && '😢'}
-                    {reaction.type === 'angry' && '😠'}
-                  </Typography>
-                ))}
-                <IconButton size="small" onClick={() => handleReaction(message._id, 'like')}>
-                  <ThumbUpIcon fontSize="small" />
-                </IconButton>
-                <IconButton size="small" onClick={() => handleReaction(message._id, 'love')}>
-                  <FavoriteIcon fontSize="small" />
-                </IconButton>
-                <IconButton size="small" onClick={() => handleReaction(message._id, 'haha')}>
-                  <EmojiEmotionsIcon fontSize="small" />
-                </IconButton>
-                <IconButton size="small" onClick={() => handleReaction(message._id, 'sad')}>
-                  <SentimentVeryDissatisfiedIcon fontSize="small" />
-                </IconButton>
-                <IconButton size="small" onClick={() => handleReaction(message._id, 'angry')}>
-                  <MoodBadIcon fontSize="small" />
-                </IconButton>
-              </Box>
             </Box>
           </Box>
         ))}
@@ -160,6 +164,10 @@ const Chat = () => {
           placeholder="Digite sua mensagem..."
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
+          sx={{
+            input: { color: '#fff' },
+            '& .MuiInputBase-input::placeholder': { color: '#ccc', opacity: 1 }
+          }}
         />
         <Button variant="contained" type="submit">
           Enviar

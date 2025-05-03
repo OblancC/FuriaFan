@@ -5,6 +5,8 @@ const { isAuthenticated } = require('../middleware/auth');
 const { extractTextFromImage } = require('../services/visionServices');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
+const Tesseract = require('tesseract.js');
+const path = require('path');
 
 // ID do servidor oficial da FURIA via .env
 const FURIA_GUILD_ID = process.env.FURIA_GUILD_ID;
@@ -138,6 +140,37 @@ router.post('/unlink/discord', isAuthenticated, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao desvincular Discord' });
+  }
+});
+
+// Rota para validar CPF via OCR
+router.post('/validate-cpf', isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user;
+    const lastDoc = user.documents && user.documents.length > 0
+      ? user.documents[user.documents.length - 1]
+      : null;
+
+    if (!lastDoc) return res.status(400).json({ error: 'Nenhum documento enviado.' });
+
+    // Caminho do arquivo (ajuste se necessário)
+    const filePath = path.join(__dirname, '../../', lastDoc.url);
+
+    // Executa o OCR com Tesseract
+    const { data: { text } } = await Tesseract.recognize(filePath, 'por');
+
+    // Regex para encontrar CPF
+    const cpfMatch = text.match(/\\b\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}\\b/);
+    if (!cpfMatch) return res.status(400).json({ error: 'CPF não encontrado no documento.' });
+
+    // Atualiza o perfil do usuário
+    user.cpf = cpfMatch[0];
+    await user.save();
+
+    res.json({ cpf: cpfMatch[0] });
+  } catch (err) {
+    console.error('Erro ao validar CPF:', err);
+    res.status(500).json({ error: 'Erro ao validar CPF.' });
   }
 });
 

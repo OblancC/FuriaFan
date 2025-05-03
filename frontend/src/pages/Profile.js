@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Container, Paper, Typography, TextField, Button, Box, Chip, Grid, Divider, Alert,
-  List, ListItem, ListItemText, ListItemAvatar, Avatar, ListItemSecondaryAction, IconButton
+  Container, Paper, Typography, TextField, Button, Box, Chip, Grid, Divider, Alert
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URLS } from '../config/api';
-import DocumentUpload from '../components/DocumentUpload';
-import { Launch as LaunchIcon, Google as GoogleIcon, Twitter as TwitterIcon } from '@mui/icons-material';
+import { Google as GoogleIcon, Twitter as TwitterIcon } from '@mui/icons-material';
 import DiscordIcon from '../components/DiscordIcon';
 import Stack from '@mui/material/Stack';
+import DocumentUploadModal from '../components/DocumentUploadModal';
+import EventModal from '../components/EventModal';
+import PurchaseModal from '../components/PurchaseModal';
+import EventHistoryModal from '../components/EventHistoryModal';
+import PurchaseHistoryModal from '../components/PurchaseHistoryModal';
+import axios from 'axios';
 
 function Profile() {
   const { user } = useAuth();
@@ -16,14 +20,42 @@ function Profile() {
   const [editMode, setEditMode] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [eventModalOpen, setEventModalOpen] = useState(false);
+  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [purchases, setPurchases] = useState([]);
+  const [eventHistoryOpen, setEventHistoryOpen] = useState(false);
+  const [purchaseHistoryOpen, setPurchaseHistoryOpen] = useState(false);
 
   useEffect(() => {
-    if (user) setFormData(user);
+    if (user) {
+      setFormData(user);
+      fetchEvents();
+      fetchPurchases();
+    }
   }, [user]);
+
+  const fetchEvents = async () => {
+    try {
+      const response = await axios.get(API_URLS.events, { withCredentials: true });
+      setEvents(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar eventos:', error);
+    }
+  };
+
+  const fetchPurchases = async () => {
+    try {
+      const response = await axios.get(API_URLS.purchases, { withCredentials: true });
+      setPurchases(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar compras:', error);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Suporte para campos aninhados (ex: address.street)
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
       setFormData(prev => ({
@@ -55,18 +87,11 @@ function Profile() {
   };
 
   const handleSocialLink = (provider) => {
-    window.location.href = `http://localhost:5000/api/auth/${provider}`;
-  };
-
-  const handleDocumentValidation = (validationData) => {
-    // Atualizar o perfil com os dados do documento validado
-    if (validationData.documentType === 'CPF') {
-      setFormData(prev => ({
-        ...prev,
-        cpf: validationData.extractedText
-      }));
+    if (provider === 'twitter') {
+      window.location.href = `http://localhost:5000/api/auth/twitter?scope=read,users.read,tweet.read,list.read,follows.read,offline.access`;
+    } else {
+      window.location.href = `http://localhost:5000/api/auth/${provider}`;
     }
-    // Você pode adicionar mais lógica aqui para outros tipos de documentos
   };
 
   const handleUnlink = async (provider) => {
@@ -76,7 +101,6 @@ function Profile() {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' }
       });
-      // Atualiza o estado local removendo a rede desvinculada
       setFormData(prev => ({
         ...prev,
         socialMedia: {
@@ -90,38 +114,44 @@ function Profile() {
     }
   };
 
-  const renderDiscordServers = () => {
-    if (!formData?.socialMedia?.discord?.guilds?.length) return null;
+  const handleAddEvent = async (event) => {
+    try {
+      const response = await axios.post(API_URLS.events, event, { withCredentials: true });
+      setEvents(prev => [...prev, response.data]);
+      setSuccess('Evento adicionado com sucesso!');
+    } catch (error) {
+      setError('Erro ao adicionar evento.');
+    }
+  };
 
-    return (
-      <Box sx={{ mt: 2 }}>
-        <Typography variant="h6" gutterBottom>Servidores Discord</Typography>
-        <List>
-          {formData.socialMedia.discord.guilds.map((guild) => (
-            <ListItem key={guild.id}>
-              <ListItemAvatar>
-                <Avatar
-                  src={guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : undefined}
-                >
-                  {guild.name[0]}
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText
-                primary={guild.name}
-                secondary={guild.owner ? 'Proprietário' : 'Membro'}
-              />
-              {guild.owner && (
-                <ListItemSecondaryAction>
-                  <IconButton edge="end" onClick={() => window.open(`https://discord.com/channels/${guild.id}`, '_blank')}>
-                    <LaunchIcon />
-                  </IconButton>
-                </ListItemSecondaryAction>
-              )}
-            </ListItem>
-          ))}
-        </List>
-      </Box>
-    );
+  const handleAddPurchase = async (purchase) => {
+    try {
+      const response = await axios.post(API_URLS.purchases, purchase, { withCredentials: true });
+      setPurchases(prev => [...prev, response.data]);
+      setSuccess('Compra adicionada com sucesso!');
+    } catch (error) {
+      setError('Erro ao adicionar compra.');
+    }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    try {
+      await axios.delete(`${API_URLS.events}/${eventId}`, { withCredentials: true });
+      setEvents(prev => prev.filter(event => event._id !== eventId));
+      setSuccess('Evento removido com sucesso!');
+    } catch (error) {
+      setError('Erro ao remover evento.');
+    }
+  };
+
+  const handleDeletePurchase = async (purchaseId) => {
+    try {
+      await axios.delete(`${API_URLS.purchases}/${purchaseId}`, { withCredentials: true });
+      setPurchases(prev => prev.filter(purchase => purchase._id !== purchaseId));
+      setSuccess('Compra removida com sucesso!');
+    } catch (error) {
+      setError('Erro ao remover compra.');
+    }
   };
 
   if (!formData) return <Container><Typography>Carregando...</Typography></Container>;
@@ -129,7 +159,14 @@ function Profile() {
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
       <Paper sx={{ p: 3 }}>
-        <Typography variant="h4" gutterBottom>Perfil do Usuário</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h4">Perfil do Usuário</Typography>
+          {editMode ? (
+            <Button variant="contained" color="primary" onClick={handleSave}>Salvar</Button>
+          ) : (
+            <Button variant="outlined" onClick={() => setEditMode(true)}>Editar</Button>
+          )}
+        </Box>
         {success && <Alert severity="success">{success}</Alert>}
         {error && <Alert severity="error">{error}</Alert>}
         <Grid container spacing={4} justifyContent="center" alignItems="center">
@@ -166,6 +203,13 @@ function Profile() {
                 margin="dense"
                 size="small"
               />
+              <Button
+                variant="outlined"
+                sx={{ mt: 1, color: '#FFFFFF', borderColor: '#FFFFFF' }}
+                onClick={() => setModalOpen(true)}
+              >
+                Validar documento
+              </Button>
             </Box>
           </Grid>
           {/* Bloco Endereço */}
@@ -205,6 +249,16 @@ function Profile() {
                 label="CEP"
                 name="address.zipCode"
                 value={formData.address?.zipCode || ''}
+                onChange={handleChange}
+                fullWidth
+                disabled={!editMode}
+                margin="dense"
+                size="small"
+              />
+              <TextField
+                label="País"
+                name="address.country"
+                value={formData.address?.country || ''}
                 onChange={handleChange}
                 fullWidth
                 disabled={!editMode}
@@ -304,15 +358,50 @@ function Profile() {
             </Box>
           </Grid>
         </Grid>
-        <Box sx={{ mt: 3, textAlign: 'center' }}>
-          {editMode ? (
-            <Button variant="contained" color="primary" onClick={handleSave}>Salvar</Button>
-          ) : (
-            <Button variant="outlined" onClick={() => setEditMode(true)}>Editar</Button>
-          )}
+        {/* Botões de ações organizados em duas colunas verticais */}
+        <Grid container spacing={2} sx={{ mt: 4, mb: 2 }} justifyContent="center">
+          <Grid item xs={12} sm={6} md={4} lg={3}>
+            <Box display="flex" flexDirection="column" gap={2}>
+              <Button fullWidth variant="outlined" sx={{ color: '#FFF', borderColor: '#FFF' }} onClick={() => setEventModalOpen(true)}>
+            Adicionar Evento
+          </Button>
+              <Button fullWidth variant="outlined" sx={{ color: '#FFF', borderColor: '#FFF' }} onClick={() => setEventHistoryOpen(true)}>
+                Ver histórico de eventos
+          </Button>
         </Box>
+          </Grid>
+          <Grid item xs={12} sm={6} md={4} lg={3}>
+            <Box display="flex" flexDirection="column" gap={2}>
+              <Button fullWidth variant="outlined" sx={{ color: '#FFF', borderColor: '#FFF' }} onClick={() => setPurchaseModalOpen(true)}>
+                Adicionar Compra
+          </Button>
+              <Button fullWidth variant="outlined" sx={{ color: '#FFF', borderColor: '#FFF' }} onClick={() => setPurchaseHistoryOpen(true)}>
+            Ver histórico de compras
+          </Button>
+        </Box>
+          </Grid>
+        </Grid>
       </Paper>
-      <DocumentUpload onValidationComplete={handleDocumentValidation} />
+      <DocumentUploadModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        cpfDigitado={formData.cpf || ''}
+        nomeCadastrado={formData.name || ''}
+      />
+      <EventModal open={eventModalOpen} onClose={() => setEventModalOpen(false)} onSave={handleAddEvent} />
+      <PurchaseModal open={purchaseModalOpen} onClose={() => setPurchaseModalOpen(false)} onSave={handleAddPurchase} />
+      <EventHistoryModal 
+        open={eventHistoryOpen} 
+        onClose={() => setEventHistoryOpen(false)} 
+        events={events}
+        onDelete={handleDeleteEvent}
+      />
+      <PurchaseHistoryModal 
+        open={purchaseHistoryOpen} 
+        onClose={() => setPurchaseHistoryOpen(false)} 
+        purchases={purchases}
+        onDelete={handleDeletePurchase}
+      />
     </Container>
   );
 }

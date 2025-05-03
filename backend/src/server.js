@@ -22,8 +22,8 @@ const io = new Server(server, {
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -58,14 +58,15 @@ app.use('/api/games', require('./routes/games'));
 app.use('/api/matches', require('./routes/matches'));
 app.use('/api/documents', require('./routes/documentRoutes'));
 app.use('/auth', require('./routes/auth'));
+app.use('/api/news', require('./routes/news'));
+app.use('/api/events', require('./routes/eventRoutes'));
+app.use('/api/purchases', require('./routes/purchaseRoutes'));
+app.use('/api/bot', require('./routes/bot'));
 
 // WebSocket
 io.on('connection', (socket) => {
-  console.log('Usuário conectado:', socket.id);
-
   socket.on('join-room', (room) => {
     socket.join(room);
-    console.log(`Usuário ${socket.id} entrou na sala ${room}`);
   });
 
   socket.on('chat-message', (data) => {
@@ -77,9 +78,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('Usuário desconectado:', socket.id);
   });
 });
+
+// Permitir acesso ao objeto io nas rotas Express
+app.set('io', io);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {

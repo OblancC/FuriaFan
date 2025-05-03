@@ -1,24 +1,15 @@
-const HLTV = require('hltv');
+const { HLTV } = require('hltv');
 
 class HltvService {
-  constructor() {
-    this.hltv = HLTV;
-  }
-
   async getFuriaMatches() {
     try {
-      // Busca os próximos jogos
-      const upcomingMatches = await this.hltv.getMatches();
-      
-      // Filtra apenas os jogos da FURIA
-      const furiaMatches = upcomingMatches.filter(match => 
-        match.team1.name === 'FURIA' || match.team2.name === 'FURIA'
-      );
-
+      // Busca apenas os jogos da FURIA usando o filtro teamIds
+      const furiaMatches = await HLTV.getMatches();
+      // Log completo para depuração
+      console.log('LOG COMPLETO HLTV.getMatches({ teamIds: [8297] }):', JSON.stringify(furiaMatches, null, 2));
       // Formata os dados dos jogos
       const formattedMatches = await Promise.all(furiaMatches.map(async (match) => {
-        const matchDetails = await this.hltv.getMatch({ id: match.id });
-        
+        const matchDetails = await HLTV.getMatch({ id: match.id });
         return {
           id: match.id,
           team1: {
@@ -45,7 +36,6 @@ class HltvService {
           }
         };
       }));
-
       return formattedMatches;
     } catch (error) {
       console.error('Erro ao buscar jogos da FURIA:', error);
@@ -55,22 +45,17 @@ class HltvService {
 
   async getLiveMatch() {
     try {
-      // Busca os jogos ao vivo
-      const liveMatches = await this.hltv.getMatches();
-      
+      // Busca apenas os jogos da FURIA usando o filtro teamIds
+      const liveMatches = await HLTV.getMatches({});
+      // Log completo para depuração
+      console.log('LOG COMPLETO HLTV.getMatches({ teamIds: [8297] }) [LIVE]:', JSON.stringify(liveMatches, null, 2));
       // Filtra apenas os jogos ao vivo da FURIA
-      const furiaLiveMatch = liveMatches.find(match => 
-        (match.team1.name === 'FURIA' || match.team2.name === 'FURIA') && 
-        match.status === 'LIVE'
-      );
-
+      const furiaLiveMatch = liveMatches.find(match => match.status === 'LIVE');
       if (!furiaLiveMatch) {
         return null;
       }
-
       // Busca detalhes do jogo ao vivo
-      const matchDetails = await this.hltv.getMatch({ id: furiaLiveMatch.id });
-      
+      const matchDetails = await HLTV.getMatch({ id: furiaLiveMatch.id });
       return {
         id: furiaLiveMatch.id,
         team1: {
@@ -97,6 +82,20 @@ class HltvService {
       };
     } catch (error) {
       console.error('Erro ao buscar jogo ao vivo da FURIA:', error);
+      throw error;
+    }
+  }
+
+  async getAllMatches() {
+    try {
+      const allMatches = await HLTV.getMatches();
+      console.log('LOG COMPLETO HLTV.getMatches():', JSON.stringify(allMatches, null, 2));
+      const furiaMatches = allMatches.filter(
+        match => match.team1.name === 'FURIA' || match.team2.name === 'FURIA'
+      );
+      return furiaMatches;
+    } catch (error) {
+      console.error('Erro ao buscar todos os jogos:', error);
       throw error;
     }
   }

@@ -42,9 +42,9 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await fetch(`${API_URLS.auth.base}/logout`, {
-        ...API_CONFIG,
-        method: 'GET'
+      await fetch(`${API_URLS.base}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
       });
     } catch (err) {
       console.error('Erro ao fazer logout:', err);

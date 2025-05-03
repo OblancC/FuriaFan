@@ -195,7 +195,7 @@ const AdminSettings = () => {
                 <Grid item xs={12} sm={4}>
                   <TextField
                     fullWidth
-                    label="Twitter"
+                    label="X"
                     name="site.socialMedia.twitter"
                     value={settings.site.socialMedia.twitter}
                     onChange={handleNestedChange}

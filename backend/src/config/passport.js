@@ -77,7 +77,8 @@ passport.use(new TwitterStrategy({
   consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
   callbackURL: process.env.TWITTER_CALLBACK_URL,
   includeEmail: true,
-  passReqToCallback: true
+  passReqToCallback: true,
+  scope: ['read', 'users.read', 'tweet.read', 'list.read', 'follows.read', 'offline.access']
 },
 async (req, token, tokenSecret, profile, done) => {
   try {
@@ -92,7 +93,7 @@ async (req, token, tokenSecret, profile, done) => {
       await user.save();
       return done(null, user);
     }
-    // Procura usuário pelo id do Twitter
+    // Procura usuário pelo id do X
     let user = await User.findOne({ 'socialMedia.twitter.id': profile.id });
     // Se não encontrar, procura pelo email (se disponível)
     if (!user && profile.emails && profile.emails[0]) {

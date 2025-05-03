@@ -45,7 +45,7 @@ app.use(passport.session());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Conexão com MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/furia-fans', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });

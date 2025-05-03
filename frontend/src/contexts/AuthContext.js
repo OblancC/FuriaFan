@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { API_URLS, API_CONFIG } from '../config/api';
+import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext();
 
@@ -7,6 +8,7 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Verifica autenticação ao carregar o app
   useEffect(() => {
@@ -35,9 +37,11 @@ export function AuthProvider({ children }) {
     checkAuthStatus();
   }, []);
 
-  const login = (userData) => {
-    setIsAuthenticated(true);
+  const login = async (userData) => {
     setUser(userData);
+    setIsAuthenticated(true);
+    await login(userData);
+    navigate('/profile');
   };
 
   const logout = async () => {

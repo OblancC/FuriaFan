@@ -4,41 +4,43 @@ import { useAuth } from '../contexts/AuthContext';
 import io from 'socket.io-client';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
+import { useLocation } from 'react-router-dom';
 
 const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000');
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+const welcomeMessage = {
+  sender: 'bot',
+  text: `Bem-vindo ao chat FURIA Fans!\n\nComandos disponíveis:\n- lineup ou matchup: mostra o time atual\n- próximo jogo: mostra o próximo confronto\n- resultado anterior ou últimos resultados: últimos jogos\n- live ou ao vivo: canais de transmissão\n- rede sociais ou organização: redes oficiais da FURIA\n\nDigite um comando para começar!`
+};
+
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [welcomeShown, setWelcomeShown] = useState(false);
   const { user } = useAuth();
   const messagesEndRef = useRef(null);
+  const location = useLocation();
 
   useEffect(() => {
     setMessages([]);
     setNewMessage('');
-    // Mensagem automática de comandos ao entrar no chat
-    setMessages([
-      {
-        sender: 'bot',
-        text: `Bem-vindo ao chat FURIA Fans!\n\nComandos disponíveis:\n- lineup ou matchup: mostra o time atual\n- próximo jogo: mostra o próximo confronto\n- resultado anterior ou últimos resultados: últimos jogos\n- live ou ao vivo: canais de transmissão\n- rede sociais ou organização: redes oficiais da FURIA\n\nDigite um comando para começar!`
-      }
-    ]);
-  }, []);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
+    setWelcomeShown(false);
     const fetchMessages = async () => {
       try {
         const response = await axios.get(`${API_BASE}/api/chat/general/messages`, {
           withCredentials: true
         });
-        setMessages(response.data);
+        if (!response.data || response.data.length === 0) {
+          setMessages([welcomeMessage]);
+          setWelcomeShown(true);
+        } else {
+          setMessages(response.data);
+          setWelcomeShown(false);
+        }
       } catch (error) {
-        console.error('Erro ao buscar mensagens:', error);
+        setMessages([welcomeMessage]);
+        setWelcomeShown(true);
       }
     };
 
@@ -61,10 +63,10 @@ const Chat = () => {
       socket.off('new-message');
       socket.off('message-reaction');
     };
-  }, []);
+  }, [location.pathname]);
 
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSendMessage = async (e) => {
@@ -74,25 +76,13 @@ const Chat = () => {
     const userMsg = { sender: 'user', text: newMessage };
     setMessages((prev) => [...prev, userMsg]);
     setNewMessage('');
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
 
     try {
       const response = await axios.post(`${API_BASE}/api/bot`, { message: userMsg.text });
-      
-      // Formatar a resposta para adicionar links "Saiba Mais" nos resultados
       let formattedResponse = response.data.response;
-      if (formattedResponse.includes('Resultados anteriores:')) {
-        const results = formattedResponse.split('\n').map(line => {
-          if (line.includes('vs')) {
-            return `${line} [Saiba Mais]`;
-          }
-          return line;
-        });
-        formattedResponse = results.join('\n');
-      }
-
       setMessages((prev) => [...prev, { sender: 'bot', text: formattedResponse }]);
-      scrollToBottom();
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
       setMessages((prev) => [...prev, { sender: 'bot', text: 'Erro ao obter resposta do bot.' }]);
     }
@@ -111,7 +101,7 @@ const Chat = () => {
               flexDirection: msg.sender === 'user' ? 'row-reverse' : 'row'
             }}
           >
-            <Avatar 
+            <Avatar
               sx={{ bgcolor: msg.sender === 'user' ? 'primary.main' : 'secondary.main', mr: msg.sender === 'user' ? 0 : 1, ml: msg.sender === 'user' ? 1 : 0 }}
               src={msg.sender === 'bot' ? process.env.PUBLIC_URL + '/assets/furia-logo.png' : undefined}
             >
@@ -128,7 +118,7 @@ const Chat = () => {
                 <Typography style={{ whiteSpace: 'pre-line', color: msg.sender === 'user' ? '#111' : undefined }}>
                   {msg.sender === 'bot' ? (
                     <ReactMarkdown components={{
-                      a: ({ node, ...props }) => <a {...props} style={{ color: '#fff', textDecoration: 'underline' }} />,
+                      a: ({ node, ...props }) => <a {...props} style={{ color: '#fff', textDecoration: 'underline' }} target="_blank" rel="noopener noreferrer">{props.children && props.children.length > 0 ? props.children : 'Saiba Mais'}</a>,
                       p: ({ node, children, ...props }) => {
                         const text = children[0];
                         if (typeof text === 'string' && text.includes('|')) {
@@ -136,7 +126,7 @@ const Chat = () => {
                           return (
                             <p {...props}>
                               {content}
-                              <a href={link.trim()} style={{ color: '#fff', textDecoration: 'underline' }}>
+                              <a href={link.trim()} style={{ color: '#fff', textDecoration: 'underline' }} target="_blank" rel="noopener noreferrer">
                                 Saiba Mais
                               </a>
                             </p>

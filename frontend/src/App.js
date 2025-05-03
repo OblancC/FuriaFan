@@ -6,6 +6,7 @@ import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Chat from './components/Chat';
+import News from './pages/News';
 
 const theme = createTheme({
   palette: {
@@ -64,24 +65,24 @@ function SocialCallbackHandler() {
 }
 
 function AppContent() {
-  const { isAuthenticated, logout, user } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
 
   return (
     <div className="App">
       <AppBar position="static">
         <Toolbar>
-          <Button component={Link} to="/" sx={{ p: 0, minWidth: 0 }}>
+          <Button
+            component={Link}
+            to="/"
+            sx={{ p: 0, minWidth: 0 }}
+            onClick={() => window.dispatchEvent(new Event('showWelcomeMessage'))}
+          >
             <img src="/assets/furia-logo.png" alt="FURIA Fans" style={{ height: 40 }} />
           </Button>
           <Box sx={{ flexGrow: 1 }} />
           {isAuthenticated && (
             <Button color="inherit" component={Link} to="/news">
               Notícias
-            </Button>
-          )}
-          {isAuthenticated && (
-            <Button color="inherit" component={Link} to="/chat">
-              Chat
             </Button>
           )}
           {isAuthenticated && (
@@ -113,6 +114,7 @@ function AppContent() {
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} />
           <Route path="/auth/callback" element={<SocialCallbackHandler />} />
+          <Route path="/news" element={<News />} />
         </Routes>
       </Container>
     </div>
@@ -123,11 +125,11 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-    <AuthProvider>
       <Router>
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </Router>
-    </AuthProvider>
     </ThemeProvider>
   );
 }

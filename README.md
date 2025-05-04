@@ -46,7 +46,7 @@ Crie os arquivos `.env` em `/backend` e `/frontend` conforme os exemplos:
 
 **backend/.env**
 ```
-MONGO_URI=mongodb://127.0.0.1:27017/furiafans
+MONGO_URI=mongodb://mongo:27017/furiafans
 PORT=5000
 SESSION_SECRET=
 FRONTEND_URL=http://localhost:3000

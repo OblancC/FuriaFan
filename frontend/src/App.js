@@ -81,20 +81,19 @@ function AppContent() {
           </Button>
           <Box sx={{ flexGrow: 1 }} />
           {isAuthenticated && (
-            <Button color="inherit" component={Link} to="/news">
-              Notícias
-            </Button>
+            <>
+          <Button color="inherit" component={Link} to="/news">
+            Notícias
+          </Button>
+              <Button color="inherit" component={Link} to="/profile">
+                Perfil
+              </Button>
+              <Button color="inherit" onClick={logout}>
+                Sair
+              </Button>
+            </>
           )}
-          {isAuthenticated && (
-            <Button color="inherit" component={Link} to="/profile">
-              Perfil
-            </Button>
-          )}
-          {isAuthenticated ? (
-            <Button color="inherit" onClick={logout}>
-              Sair
-            </Button>
-          ) : (
+          {!isAuthenticated && (
             <>
               <Button color="inherit" component={Link} to="/login">
                 Entrar
@@ -127,7 +126,7 @@ function App() {
       <CssBaseline />
       <Router>
         <AuthProvider>
-          <AppContent />
+        <AppContent />
         </AuthProvider>
       </Router>
     </ThemeProvider>

@@ -88,7 +88,10 @@ async (req, token, tokenSecret, profile, done) => {
       user.socialMedia = user.socialMedia || {};
       user.socialMedia.twitter = {
         id: profile.id,
-        username: profile.username
+        username: profile.username,
+        accessToken: token,
+        accessSecret: tokenSecret,
+        lastSync: new Date()
       };
       await user.save();
       return done(null, user);
@@ -102,7 +105,10 @@ async (req, token, tokenSecret, profile, done) => {
         user.socialMedia = user.socialMedia || {};
         user.socialMedia.twitter = {
           id: profile.id,
-          username: profile.username
+          username: profile.username,
+          accessToken: token,
+          accessSecret: tokenSecret,
+          lastSync: new Date()
         };
         await user.save();
       }
@@ -115,7 +121,10 @@ async (req, token, tokenSecret, profile, done) => {
         socialMedia: {
           twitter: {
             id: profile.id,
-            username: profile.username
+            username: profile.username,
+            accessToken: token,
+            accessSecret: tokenSecret,
+            lastSync: new Date()
           }
         }
       });

@@ -7,6 +7,7 @@ const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 const Tesseract = require('tesseract.js');
 const path = require('path');
+const TwitterService = require('../services/twitterService');
 
 // ID do servidor oficial da FURIA via .env
 const FURIA_GUILD_ID = process.env.FURIA_GUILD_ID;
@@ -171,6 +172,69 @@ router.post('/validate-cpf', isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error('Erro ao validar CPF:', err);
     res.status(500).json({ error: 'Erro ao validar CPF.' });
+  }
+});
+
+// Rota para sincronizar dados do Twitter
+router.post('/sync/twitter', isAuthenticated, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user.socialMedia?.twitter?.accessToken) {
+      return res.status(400).json({ error: 'Conta do Twitter não vinculada' });
+    }
+
+    const twitterService = new TwitterService(
+      user.socialMedia.twitter.accessToken,
+      user.socialMedia.twitter.accessSecret
+    );
+
+    // Busca dados do Twitter
+    const [profile, tweets, likes, following] = await Promise.all([
+      twitterService.getUserProfile(),
+      twitterService.getTweets(user.socialMedia.twitter.id),
+      twitterService.getLikes(user.socialMedia.twitter.id),
+      twitterService.getFollowing(user.socialMedia.twitter.id)
+    ]);
+
+    // Atualiza dados do usuário
+    user.socialData = user.socialData || {};
+    user.socialData.twitter = {
+      following: following.map(f => ({
+        id: f.id,
+        username: f.username,
+        name: f.name,
+        profileImageUrl: f.profile_image_url
+      })),
+      tweets: tweets.map(t => ({
+        id: t.id,
+        text: t.text,
+        createdAt: new Date(t.created_at),
+        metrics: t.public_metrics
+      })),
+      likes: likes.map(l => ({
+        id: l.id,
+        text: l.text,
+        createdAt: new Date(l.created_at),
+        authorId: l.author_id,
+        authorUsername: l.author_username
+      }))
+    };
+
+    user.socialMedia.twitter.lastSync = new Date();
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Dados do Twitter sincronizados com sucesso',
+      data: {
+        following: user.socialData.twitter.following.length,
+        tweets: user.socialData.twitter.tweets.length,
+        likes: user.socialData.twitter.likes.length
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao sincronizar dados do Twitter:', error);
+    res.status(500).json({ error: 'Erro ao sincronizar dados do Twitter' });
   }
 });
 

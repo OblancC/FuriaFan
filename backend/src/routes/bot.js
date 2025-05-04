@@ -17,24 +17,27 @@ router.post('/', async (req, res) => {
     if (msg.includes('matchup') || msg.includes('lineup')) {
       // Usar dados mockados
       const starters = furiaPlayers.players.filter(p => p.status === 'STARTER');
-      let respostaJogadores = starters.map(p => {
+      // Adiciona o coach como se fosse um jogador
+      const all = [
+        ...starters,
+        { name: furiaPlayers.coach.name, social: furiaPlayers.coach.social, isCoach: true }
+      ];
+
+      let respostaJogadores = all.map(p => {
         let redes = [];
         if (p.social.faceit) redes.push(`[Faceit](${p.social.faceit})`);
         if (p.social.twitter) redes.push(`[X](${p.social.twitter})`);
         if (p.social.instagram) redes.push(`[Instagram](${p.social.instagram})`);
         if (p.social.twitch) redes.push(`[Twitch](${p.social.twitch})`);
-        return `- ${p.name} (Rating: ${p.rating})${redes.length > 0 ? '\n    ' + redes.join(' | ') : ''}`;
+
+        if (p.isCoach) {
+          return `- Coach: ${p.name}${redes.length > 0 ? '\n    ' + redes.join(' | ') : ''}`;
+        } else {
+          return `- ${p.name} (Rating: ${p.rating})${redes.length > 0 ? '\n    ' + redes.join(' | ') : ''}`;
+        }
       }).join('\n');
-      // Coach
-      let coachRedes = [];
-      if (furiaPlayers.coach.social) {
-        if (furiaPlayers.coach.social.faceit) coachRedes.push(`[Faceit](${furiaPlayers.coach.social.faceit})`);
-        if (furiaPlayers.coach.social.twitter) coachRedes.push(`[X](${furiaPlayers.coach.social.twitter})`);
-        if (furiaPlayers.coach.social.instagram) coachRedes.push(`[Instagram](${furiaPlayers.coach.social.instagram})`);
-        if (furiaPlayers.coach.social.twitch) coachRedes.push(`[Twitch](${furiaPlayers.coach.social.twitch})`);
-      }
-      const coach = furiaPlayers.coach ? furiaPlayers.coach.name : 'Desconhecido';
-      resposta = `Lineup atual da FURIA:\n${respostaJogadores}\nCoach: ${coach}${coachRedes.length > 0 ? '\n    ' + coachRedes.join(' | ') : ''}`;
+
+      resposta = `Lineup atual da FURIA:\n${respostaJogadores}`;
     } else if (msg.includes('próximo jogo') || msg.includes('proximo jogo') || msg.includes('calendario') || msg.includes('agenda')) {
       // Usar mock para o próximo jogo
       const agora = Date.now();
@@ -51,7 +54,7 @@ router.post('/', async (req, res) => {
         diffMs -= diffMin * (1000 * 60);
         const diffSeg = Math.floor(diffMs / 1000);
         const tempoRestante = `${String(diffDias).padStart(2, '0')}:${String(diffHoras).padStart(2, '0')}:${String(diffMin).padStart(2, '0')}:${String(diffSeg).padStart(2, '0')}`;
-        resposta = `Próximo jogo da FURIA:\n${proximo.team1.name} vs ${proximo.team2.name}\nEvento: ${proximo.event.name}\nData: ${new Date(proximo.date).toLocaleDateString('pt-BR')}\nHorário: 05:00 (Brasília)\nFaltam: ${tempoRestante}`;
+        resposta = `Próximo jogo da FURIA:\n\n${proximo.team1.name} vs ${proximo.team2.name}\nEvento: ${proximo.event.name}\nData: ${new Date(proximo.date).toLocaleDateString('pt-BR')}\nHorário: 05:00 (Brasília)\nFaltam: ${tempoRestante}`;
       } else {
         resposta = 'Nenhum jogo futuro da FURIA encontrado.';
       }
@@ -59,8 +62,8 @@ router.post('/', async (req, res) => {
       // Usar mock para últimos resultados
       const ultimos = furiaResultsMock.slice(0, 5).map(r => 
         `${new Date(r.date).toLocaleDateString('pt-BR')}: ${r.team1.name} ${r.team1.score}x${r.team2.score} ${r.team2.name} (${r.event.name}) [Saiba Mais](${r.link})`
-      ).join('\n');
-      resposta = `Últimos jogos da FURIA:\n${ultimos}`;
+      ).join('\n\n');
+      resposta = `Últimos jogos da FURIA:\n\n${ultimos}`;
     } else if (msg.includes('rede sociais') || msg.includes('perfil') || msg.includes('organização') || msg.includes('org')) {
       // Resposta para redes sociais da organização
       resposta = `Redes sociais da FURIA:

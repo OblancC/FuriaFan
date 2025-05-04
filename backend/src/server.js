@@ -75,7 +75,7 @@ io.on('connection', (socket) => {
       message: data.message,
       timestamp: new Date()
     });
-  });
+});
 
   socket.on('disconnect', () => {
   });

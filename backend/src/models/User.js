@@ -44,7 +44,10 @@ const userSchema = new mongoose.Schema({
     },
     twitter: {
       id: String,
-      username: String
+      username: String,
+      accessToken: String,
+      accessSecret: String,
+      lastSync: Date
     },
     google: {
       id: String,
@@ -107,9 +110,30 @@ const userSchema = new mongoose.Schema({
   }],
   socialData: {
     twitter: {
-      following: [mongoose.Schema.Types.Mixed],
-      tweets: [mongoose.Schema.Types.Mixed],
-      likes: [mongoose.Schema.Types.Mixed]
+      following: [{
+        id: String,
+        username: String,
+        name: String,
+        profileImageUrl: String
+      }],
+      tweets: [{
+        id: String,
+        text: String,
+        createdAt: Date,
+        metrics: {
+          retweets: Number,
+          replies: Number,
+          likes: Number,
+          quotes: Number
+        }
+      }],
+      likes: [{
+        id: String,
+        text: String,
+        createdAt: Date,
+        authorId: String,
+        authorUsername: String
+      }]
     },
     discord: {
       guilds: [mongoose.Schema.Types.Mixed]

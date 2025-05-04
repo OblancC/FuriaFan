@@ -17,7 +17,6 @@ const welcomeMessage = {
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [welcomeShown, setWelcomeShown] = useState(false);
   const { user } = useAuth();
   const messagesEndRef = useRef(null);
   const location = useLocation();
@@ -25,7 +24,6 @@ const Chat = () => {
   useEffect(() => {
     setMessages([]);
     setNewMessage('');
-    setWelcomeShown(false);
     const fetchMessages = async () => {
       try {
         const response = await axios.get(`${API_BASE}/api/chat/general/messages`, {
@@ -33,14 +31,11 @@ const Chat = () => {
         });
         if (!response.data || response.data.length === 0) {
           setMessages([welcomeMessage]);
-          setWelcomeShown(true);
         } else {
           setMessages(response.data);
-          setWelcomeShown(false);
         }
       } catch (error) {
         setMessages([welcomeMessage]);
-        setWelcomeShown(true);
       }
     };
 
@@ -79,18 +74,36 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
 
     try {
-      const response = await axios.post(`${API_BASE}/api/bot`, { message: userMsg.text });
+      const response = await axios.post(`${API_BASE}/api/bot`, { message: newMessage });
       let formattedResponse = response.data.response;
       setMessages((prev) => [...prev, { sender: 'bot', text: formattedResponse }]);
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
-      setMessages((prev) => [...prev, { sender: 'bot', text: 'Erro ao obter resposta do bot.' }]);
+      console.error('Erro ao obter resposta do bot:', error);
+      setMessages((prev) => [...prev, { 
+        sender: 'bot', 
+        text: 'Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.' 
+      }]);
     }
   };
 
   return (
-    <Box sx={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
-      <Paper sx={{ flex: 1, overflow: 'auto', p: 2, mb: 2 }}>
+    <Box sx={{ 
+      height: 'calc(100vh - 120px)', 
+      display: 'flex', 
+      flexDirection: 'column',
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '0 16px'
+    }}>
+      <Paper sx={{ 
+        flex: 1, 
+        overflow: 'auto', 
+        p: 2, 
+        mb: 2,
+        backgroundColor: 'background.paper',
+        borderRadius: 2
+      }}>
         {messages.map((msg, idx) => (
           <Box
             key={idx}
@@ -102,64 +115,103 @@ const Chat = () => {
             }}
           >
             <Avatar
-              sx={{ bgcolor: msg.sender === 'user' ? 'primary.main' : 'secondary.main', mr: msg.sender === 'user' ? 0 : 1, ml: msg.sender === 'user' ? 1 : 0 }}
+              sx={{ 
+                bgcolor: msg.sender === 'user' ? 'primary.main' : 'secondary.main', 
+                mr: msg.sender === 'user' ? 0 : 1, 
+                ml: msg.sender === 'user' ? 1 : 0,
+                width: 40,
+                height: 40
+              }}
               src={msg.sender === 'bot' ? process.env.PUBLIC_URL + '/assets/furia-logo.png' : undefined}
             >
               {msg.sender === 'user' ? (user?.name ? user.name[0] : 'U') : (msg.sender === 'bot' ? '' : 'B')}
             </Avatar>
-            <Box>
+            <Box sx={{ maxWidth: '70%' }}>
               <Typography variant="subtitle2" color="text.secondary">
                 {msg.sender === 'user' ? (user?.name || 'Você') : 'FURIA Bot'}
               </Typography>
               <Paper
-                elevation={1}
-                sx={{ p: 1, bgcolor: msg.sender === 'user' ? 'primary.light' : 'background.paper' }}
+                sx={{
+                  p: 1.5,
+                  backgroundColor: msg.sender === 'user' ? 'primary.main' : 'background.paper',
+                  color: msg.sender === 'user' ? '#000000' : 'text.primary',
+                  wordBreak: 'break-word',
+                  borderRadius: 2
+                }}
               >
-                <Typography style={{ whiteSpace: 'pre-line', color: msg.sender === 'user' ? '#111' : undefined }}>
-                  {msg.sender === 'bot' ? (
-                    <ReactMarkdown components={{
-                      a: ({ node, ...props }) => <a {...props} style={{ color: '#fff', textDecoration: 'underline' }} target="_blank" rel="noopener noreferrer">{props.children && props.children.length > 0 ? props.children : 'Saiba Mais'}</a>,
-                      p: ({ node, children, ...props }) => {
-                        const text = children[0];
-                        if (typeof text === 'string' && text.includes('|')) {
-                          const [content, link] = text.split('|');
-                          return (
-                            <p {...props}>
-                              {content}
-                              <a href={link.trim()} style={{ color: '#fff', textDecoration: 'underline' }} target="_blank" rel="noopener noreferrer">
-                                Saiba Mais
-                              </a>
-                            </p>
-                          );
-                        }
-                        return <p {...props}>{children}</p>;
-                      }
-                    }}>
-                      {msg.text}
-                    </ReactMarkdown>
-                  ) : (
-                    msg.text
-                  )}
-                </Typography>
+                <ReactMarkdown components={{
+                  a: ({ node, children, ...props }) => (
+                    <a {...props} style={{ color: msg.sender === 'user' ? '#000000' : '#fff', textDecoration: 'underline' }} target="_blank" rel="noopener noreferrer">
+                      {children || 'Saiba Mais'}
+                    </a>
+                  ),
+                  p: ({ node, children, ...props }) => {
+                    const text = children[0];
+                    if (typeof text === 'string' && text.includes('|')) {
+                      const [content, link] = text.split('|');
+                      return (
+                        <p {...props}>
+                          {content}
+                          <a href={link.trim()} style={{ color: msg.sender === 'user' ? '#000000' : '#fff', textDecoration: 'underline' }} target="_blank" rel="noopener noreferrer">
+                            Saiba Mais
+                          </a>
+                        </p>
+                      );
+                    }
+                    return <p {...props}>{children}</p>;
+                  }
+                }}>
+                  {msg.text}
+                </ReactMarkdown>
               </Paper>
             </Box>
           </Box>
         ))}
         <div ref={messagesEndRef} />
       </Paper>
-      <Box component="form" onSubmit={handleSendMessage} sx={{ display: 'flex', gap: 1 }}>
+      <Box 
+        component="form" 
+        onSubmit={handleSendMessage} 
+        sx={{ 
+          display: 'flex', 
+          gap: 1,
+          position: 'sticky',
+          bottom: 0,
+          backgroundColor: 'background.default',
+          padding: '8px 0'
+        }}
+      >
         <TextField
           fullWidth
           variant="outlined"
           placeholder="Digite sua mensagem..."
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          sx={{
-            input: { color: '#fff' },
-            '& .MuiInputBase-input::placeholder': { color: '#ccc', opacity: 1 }
+          sx={{ 
+            backgroundColor: 'background.paper',
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 2
+            }
           }}
         />
-        <Button variant="contained" type="submit">
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={!newMessage.trim()}
+          sx={{ 
+            borderRadius: 2,
+            minWidth: '100px',
+            backgroundColor: '#FFFFFF',
+            color: '#000000',
+            '&:hover': {
+              backgroundColor: '#E0E0E0'
+            },
+            '&.Mui-disabled': {
+              backgroundColor: '#666666',
+              color: '#999999'
+            }
+          }}
+        >
           Enviar
         </Button>
       </Box>
